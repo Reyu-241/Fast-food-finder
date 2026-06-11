@@ -219,7 +219,7 @@ const fetchFastFood = (lat, lon) => {
         console.error('Fetch error:', error);
         showError(`API Error: ${error.message}. Please try again in a moment.`);
     });
-};
+
 
 const renderRestaurants = restaurants => {
     const maxDist = parseFloat($('distanceFilter').value) || 3;
