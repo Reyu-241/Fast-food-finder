@@ -92,11 +92,11 @@ const showError = (message) => {
 
 const fetchFastFood = async (lat, lon) => {
     $('loadingSpinner').style.display = 'block';
-    $('restaurantsList').innerHTML = '<li class="restaurant-item">🔍 Searching nearby...</li>';
+    $('restaurantsList').innerHTML = '<li class="restaurant-item">🔍 Searching nearby fast food...</li>';
 
-    const radius = 12000; // 12km
+    const radius = 10000; // 10 km
     const query = `
-[out:json][timeout:30];
+[out:json][timeout:25];
 (
   node["amenity"="fast_food"](around:${radius},${lat},${lon});
   way["amenity"="fast_food"](around:${radius},${lat},${lon});
@@ -104,60 +104,97 @@ const fetchFastFood = async (lat, lon) => {
 out center;
 `;
 
-    try {
-        const response = await fetch('https://overpass-api.de/api/interpreter', {
-            method: 'POST',
-            body: `data=${encodeURIComponent(query)}`,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
+    // Multiple public Overpass instances (most reliable first)
+    const endpoints = [
+        "https://overpass.private.coffee/api/interpreter",   // Often the most stable
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://lz4.overpass-api.de/api/interpreter",
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.nchc.org.tw/api/interpreter"       // Alternative
+    ];
 
-        if (!response.ok) throw new Error('Overpass API error');
+    let success = false;
 
-        const data = await response.json();
+    for (const endpoint of endpoints) {
+        try {
+            console.log(`Trying Overpass endpoint: ${endpoint}`);
 
-        if (!data.elements?.length) {
-            showError('No fast food places found nearby.');
-            allRestaurants = [];
-            return;
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'FastFood-Finder-App/1.0'
+                },
+                body: `data=${encodeURIComponent(query)}`
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.elements && data.elements.length > 0) {
+                console.log(`✅ Success! Found ${data.elements.length} places using ${endpoint}`);
+
+                allRestaurants = data.elements.map((el, index) => {
+                    const tags = el.tags || {};
+                    const center = el.center || el;
+
+                    const name = tags.name || "Unnamed Fast Food";
+                    const cuisine = tags.cuisine 
+                        ? tags.cuisine.split(';').map(c => c.trim()).join(', ') 
+                        : "Fast Food";
+
+                    let address = [tags['addr:housenumber'], tags['addr:street']]
+                        .filter(Boolean).join(' ').trim();
+                    if (!address) address = tags['addr:full'] || "Address not available";
+
+                    return {
+                        name: name,
+                        cuisine: cuisine,
+                        address: address,
+                        city: tags['addr:city'] || '',
+                        postcode: tags['addr:postcode'] || '',
+                        phone: tags.phone || tags['contact:phone'] || '',
+                        website: tags.website || tags['contact:website'] || '',
+                        hours: tags.opening_hours || '',
+                        lat: parseFloat(center.lat),
+                        lon: parseFloat(center.lon),
+                        distance: distance(lat, lon, parseFloat(center.lat), parseFloat(center.lon)),
+                        id: index + 1
+                    };
+                });
+
+                allRestaurants.sort((a, b) => a.distance - b.distance);
+
+                // Cache
+                saveCache(STORAGE.restaurants, allRestaurants);
+                saveCache(STORAGE.location, { lat: userLat, lon: userLon });
+                saveCache(STORAGE.timestamp, new Date().toISOString());
+
+                renderRestaurants(allRestaurants);
+                addMarkers(allRestaurants);
+
+                success = true;
+                break;
+            } else {
+                console.log(`No results from ${endpoint}`);
+            }
+        } catch (err) {
+            console.warn(`Endpoint ${endpoint} failed:`, err.message);
         }
+    }
 
-        allRestaurants = data.elements.map((el, index) => {
-            const tags = el.tags || {};
-            const center = el.center || el;
-            const name = tags.name || 'Fast Food Place';
-            const cuisine = tags.cuisine ? tags.cuisine.split(';').join(', ') : 'Fast Food';
+    $('loadingSpinner').style.display = 'none';
 
-            let address = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean).join(' ');
-            if (!address) address = 'Address unavailable';
-
-            return {
-                name,
-                cuisine,
-                address,
-                phone: tags.phone || '',
-                website: tags.website || '',
-                hours: tags.opening_hours || '',
-                lat: parseFloat(center.lat),
-                lon: parseFloat(center.lon),
-                distance: distance(lat, lon, parseFloat(center.lat), parseFloat(center.lon)),
-                id: index + 1
-            };
-        });
-
-        allRestaurants.sort((a, b) => a.distance - b.distance);
-
-        saveCache(STORAGE.restaurants, allRestaurants);
-        saveCache(STORAGE.location, { lat, lon });
-        saveCache(STORAGE.timestamp, new Date().toISOString());
-
-        renderRestaurants(allRestaurants);
-        addMarkers(allRestaurants);
-
-    } catch (err) {
-        console.error(err);
-        showError('Failed to fetch data from Overpass API. Try again later.');
-    } finally {
-        $('loadingSpinner').style.display = 'none';
+    if (!success) {
+        console.error("All Overpass endpoints failed");
+        showError(`
+            Could not fetch fast food locations.<br>
+            <small>Overpass servers are busy or unreachable right now.<br>
+            Try again in a few minutes or use a different location.</small>
+        `);
     }
 };
 
