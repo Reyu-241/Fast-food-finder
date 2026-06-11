@@ -67,9 +67,92 @@ const showError = (message) => {
 
 const fetchFastFood = (lat, lon) => {
     $('loadingSpinner').style.display = 'block';
-    $('restaurantsList').innerHTML = '<li class="restaurant-item">Loading...</li>';
     
-    console.log(`Searching for fast food near: ${lat}, ${lon}`);
+    setTimeout(() => {
+        console.log('Using mock data for testing');
+
+        // Mock restaurants near the user
+        allRestaurants = [
+            {
+                name: 'KFC',
+                cuisine: 'Fast Food',
+                address: 'Main Street',
+                city: '',
+                postcode: '',
+                phone: '011 123 4567',
+                website: 'www.kfc.co.za',
+                hours: '09:00-22:00',
+                lat: lat + 0.01,
+                lon: lon + 0.01,
+                distance: 1.2,
+                id: 1
+            },
+            {
+                name: 'Burger King',
+                cuisine: 'Fast Food',
+                address: 'Park Avenue',
+                city: '',
+                postcode: '',
+                phone: '011 987 6543',
+                website: 'www.burgerking.co.za',
+                hours: '09:00-23:00',
+                lat: lat - 0.01,
+                lon: lon - 0.01,
+                distance: 1.8,
+                id: 2
+            },
+            {
+                name: 'Mcdonalds',
+                cuisine: 'Fast Food',
+                address: 'Shopping Mall',
+                city: '',
+                postcode: '',
+                phone: '011 456 7890',
+                website: 'www.mcdonalds.co.za',
+                hours: '08:00-23:30',
+                lat: lat + 0.02,
+                lon: lon,
+                distance: 2.3,
+                id: 3
+            },
+            {
+                name: 'Nando\'s',
+                cuisine: 'Fast Food - Chicken',
+                address: 'Downtown',
+                city: '',
+                postcode: '',
+                phone: '011 234 5678',
+                website: 'www.nandos.co.za',
+                hours: '10:00-22:00',
+                lat: lat,
+                lon: lon + 0.02,
+                distance: 2.5,
+                id: 4
+            },
+            {
+                name: 'Chicken Licken',
+                cuisine: 'Fast Food - Chicken',
+                address: 'Suburb Road',
+                city: '',
+                postcode: '',
+                phone: '011 555 6666',
+                website: 'www.chickenlicken.co.za',
+                hours: '07:00-21:00',
+                lat: lat - 0.02,
+                lon: lon,
+                distance: 2.8,
+                id: 5
+            }
+        ];
+
+        saveCache(STORAGE.restaurants, allRestaurants);
+        saveCache(STORAGE.location, { lat: userLat, lon: userLon });
+        saveCache(STORAGE.timestamp, new Date().toISOString());
+
+        $('loadingSpinner').style.display = 'none';
+        renderRestaurants(allRestaurants);
+    }, 500);
+};
 
     // Using OpenTripMap API (supports CORS, free, no API key)
     const searchUrl = `https://api.opentripmap.com/0.1/en/places/bbox?lon_min=${lon-0.05}&lon_max=${lon+0.05}&lat_min=${lat-0.05}&lat_max=${lat+0.05}&kinds=fast_food&limit=50`;
