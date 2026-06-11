@@ -55,45 +55,100 @@ const loadCachedData = () => {
     }
 };
 
+const showError = (message) => {
+    console.error('Error:', message);
+    $('loadingSpinner').style.display = 'none';
+    $('restaurantsList').innerHTML = `
+        <li class="restaurant-item" style="color:red;">
+            <strong>❌ Error:</strong> ${message}<br>
+            <small>Check the console for details (Press F12)</small>
+        </li>`;
+};
+
 const fetchFastFood = (lat, lon) => {
-    const query = `[out:json][timeout:25];(node[amenity=fast_food](around:5000,${lat},${lon});way[amenity=fast_food](around:5000,${lat},${lon});relation[amenity=fast_food](around:5000,${lat},${lon}););out center;`;
+    $('loadingSpinner').style.display = 'block';
+    $('restaurantsList').innerHTML = '<li class="restaurant-item">Loading...</li>';
     
+    console.log(`Fetching restaurants for: ${lat}, ${lon}`);
+
+    // Simplified Overpass query
+    const query = `[out:json];(node["amenity"="fast_food"](around:5000,${lat},${lon});way["amenity"="fast_food"](around:5000,${lat},${lon}););out center;`;
+    
+    console.log('Sending query:', query);
+
     fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(query)
+        headers: { 
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+        },
+        body: 'data=' + encodeURIComponent(query),
+        timeout: 30000
     })
-    .then(r => r.json())
+    .then(response => {
+        console.log('API Response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`API returned ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
-        allRestaurants = (data.elements || []).map(place => {
-            const [lat, lon] = place.type === 'node' 
-                ? [place.lat, place.lon] 
-                : [place.center?.lat, place.center?.lon];
+        console.log('API Response data:', data);
+        
+        if (!data.elements) {
+            throw new Error('No elements in response');
+        }
+
+        console.log(`Found ${data.elements.length} total elements`);
+
+        allRestaurants = data.elements.map(place => {
+            let plat, plon;
             
-            return lat && lon ? {
-                name: place.tags?.name || 'Unnamed',
+            if (place.type === 'node') {
+                plat = place.lat;
+                plon = place.lon;
+            } else if (place.center) {
+                plat = place.center.lat;
+                plon = place.center.lon;
+            } else {
+                return null;
+            }
+            
+            if (!plat || !plon) return null;
+
+            return {
+                name: place.tags?.name || 'Unnamed Fast Food',
                 cuisine: place.tags?.cuisine?.split(';').join(', ') || 'Fast Food',
-                address: place.tags?.['addr:street'] || 'N/A',
+                address: place.tags?.['addr:street'] || 'Address not available',
                 city: place.tags?.['addr:city'] || '',
                 postcode: place.tags?.['addr:postcode'] || '',
                 phone: place.tags?.phone || '',
                 website: place.tags?.website || '',
                 hours: place.tags?.opening_hours || '',
-                lat, lon,
-                distance: distance(userLat, userLon, lat, lon),
+                lat: plat,
+                lon: plon,
+                distance: distance(userLat, userLon, plat, plon),
                 id: place.id
-            } : null;
+            };
         }).filter(Boolean).sort((a, b) => a.distance - b.distance);
-        
+
+        console.log(`Processed ${allRestaurants.length} restaurants`);
+
+        if (allRestaurants.length === 0) {
+            showError('No fast food restaurants found in this area. Try a different location.');
+            return;
+        }
+
         saveCache(STORAGE.restaurants, allRestaurants);
         saveCache(STORAGE.location, { lat: userLat, lon: userLon });
         saveCache(STORAGE.timestamp, new Date().toISOString());
-        
+
+        $('loadingSpinner').style.display = 'none';
         renderRestaurants(allRestaurants);
     })
-    .catch(e => {
-        $('loadingSpinner').style.display = 'none';
-        $('restaurantsList').innerHTML = '<li class="restaurant-item" style="color:red;">Error loading. Try again.</li>';
+    .catch(error => {
+        console.error('Fetch error:', error);
+        showError(`API Error: ${error.message}`);
     });
 };
 
@@ -102,23 +157,26 @@ const renderRestaurants = restaurants => {
     const filtered = restaurants.filter(r => r.distance <= maxDist);
     const list = $('restaurantsList');
     
-    list.innerHTML = filtered.length === 0 
-        ? '<li class="restaurant-item">No restaurants at this distance.</li>'
-        : filtered.map(place => `
-            <li class="restaurant-item" draggable="true" data-restaurant-id="${place.id}">
-                <div class="restaurant-header">
-                    <strong>${place.name}</strong>
-                    <span class="distance-badge">${place.distance.toFixed(2)} km</span>
-                </div>
-                <small class="cuisine">${place.cuisine}</small><br>
-                ${place.address ? `<small class="address">📍 ${place.address}</small><br>` : ''}
-                <small class="drag-hint-item">🖱️ Drag for details</small>
-            </li>`).join('');
+    if (filtered.length === 0) {
+        list.innerHTML = '<li class="restaurant-item">No restaurants at this distance.</li>';
+        return;
+    }
+
+    list.innerHTML = filtered.map(place => `
+        <li class="restaurant-item" draggable="true" data-restaurant-id="${place.id}">
+            <div class="restaurant-header">
+                <strong>${place.name}</strong>
+                <span class="distance-badge">${place.distance.toFixed(2)} km</span>
+            </div>
+            <small class="cuisine">${place.cuisine}</small><br>
+            ${place.address ? `<small class="address">📍 ${place.address}</small><br>` : ''}
+            <small class="drag-hint-item">🖱️ Drag for details</small>
+        </li>`).join('');
 
     document.querySelectorAll('.restaurant-item').forEach(li => {
         li.addEventListener('dragstart', e => {
-            e.dataTransfer.setData('application/json', 
-                JSON.stringify(restaurants.find(r => r.id == li.dataset.restaurantId)));
+            const restaurant = restaurants.find(r => r.id == li.dataset.restaurantId);
+            e.dataTransfer.setData('application/json', JSON.stringify(restaurant));
             li.classList.add('dragging');
         });
         li.addEventListener('dragend', () => li.classList.remove('dragging'));
@@ -129,7 +187,8 @@ const renderRestaurants = restaurants => {
 
 const displayPlaceDetails = place => {
     const dropZone = $('dropZone');
-    dropZone.querySelector('.drop-placeholder').style.display = 'none';
+    const placeholder = dropZone.querySelector('.drop-placeholder');
+    if (placeholder) placeholder.style.display = 'none';
     
     $('detailName').textContent = place.name;
     $('detailCuisine').textContent = place.cuisine || 'N/A';
@@ -144,19 +203,20 @@ const displayPlaceDetails = place => {
     
     $('detailExtra').innerHTML = place.phone 
         ? `<div>📞 ${place.phone}</div>${place.hours ? `<div>⏰ ${place.hours}</div>` : ''}`
-        : 'No info available';
+        : 'No additional info available';
     
     $('selectedPlaceDetails').style.display = 'block';
 };
 
 const setupDropZone = () => {
     const zone = $('dropZone');
-    ['dragover', 'drop'].forEach(event => {
-        zone.addEventListener(event, e => e.preventDefault());
+    zone.addEventListener('dragover', e => {
+        e.preventDefault();
+        zone.classList.add('drag-over');
     });
-    zone.addEventListener('dragover', () => zone.classList.add('drag-over'));
     zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
     zone.addEventListener('drop', e => {
+        e.preventDefault();
         zone.classList.remove('drag-over');
         try {
             displayPlaceDetails(JSON.parse(e.dataTransfer.getData('application/json')));
@@ -168,8 +228,9 @@ const setupDropZone = () => {
 
 const clearSelection = () => {
     const dropZone = $('dropZone');
+    const placeholder = dropZone.querySelector('.drop-placeholder');
     $('selectedPlaceDetails').style.display = 'none';
-    dropZone.querySelector('.drop-placeholder').style.display = 'block';
+    if (placeholder) placeholder.style.display = 'block';
 };
 
 const clearCache = () => {
@@ -184,26 +245,43 @@ document.addEventListener('DOMContentLoaded', () => {
     
     $('getLocationBtn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            alert('Geolocation not supported');
+            showError('Geolocation is not supported by your browser');
             return;
         }
+
+        console.log('Getting user location...');
         $('loadingSpinner').style.display = 'block';
+
         navigator.geolocation.getCurrentPosition(
             pos => {
+                console.log('Location obtained:', pos.coords);
                 displayLocation(pos.coords.latitude, pos.coords.longitude);
                 fetchFastFood(pos.coords.latitude, pos.coords.longitude);
             },
             err => {
+                console.error('Geolocation error:', err);
                 $('loadingSpinner').style.display = 'none';
-                alert(err.code === 1 ? 'Location access denied' : 'Location unavailable');
-            }
+                const errorMsg = err.code === 1 
+                    ? 'Location access denied. Allow location in browser settings.'
+                    : err.code === 2
+                    ? 'Location unavailable. Enable GPS or try WiFi.'
+                    : 'Location request timed out. Try again.';
+                showError(errorMsg);
+            },
+            { timeout: 10000, enableHighAccuracy: true }
         );
     });
 
-    $('distanceFilter').addEventListener('input', e => {
-        $('distanceValue').textContent = e.target.value + ' km';
-        renderRestaurants(allRestaurants);
-    });
+    const distFilter = $('distanceFilter');
+    if (distFilter) {
+        distFilter.addEventListener('input', e => {
+            $('distanceValue').textContent = e.target.value + ' km';
+            renderRestaurants(allRestaurants);
+        });
+    }
 
-    $('clearButton').addEventListener('click', clearSelection);
+    const clearBtn = $('clearButton');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearSelection);
+    }
 });
