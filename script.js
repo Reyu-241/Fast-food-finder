@@ -1,10 +1,77 @@
+const STORAGE = {
+    restaurants: 'fastFood_restaurants',
+    location: 'fastFood_location',
+    timestamp: 'fastFood_timestamp'
+};
+
+let userLat, userLon, allRestaurants = [];
+
+const $ = id => document.getElementById(id);
+
+const saveCache = (key, data) => {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+        console.warn('Cache save failed:', e);
+    }
+};
+
+const loadCache = key => {
+    try {
+        return JSON.parse(localStorage.getItem(key));
+    } catch (e) {
+        return null;
+    }
+};
+
+const distance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+};
+
+const displayLocation = (lat, lon, isCached = false) => {
+    userLat = lat;
+    userLon = lon;
+    const cached = isCached ? ' (Cached)' : '';
+    const time = isCached ? `<br><small style="color:#999;">Cached</small>` : '';
+    $('coordsDisplay').innerHTML = 
+        `📍 <strong>Your Location${cached}:</strong><br>Latitude: ${lat.toFixed(5)}, Longitude: ${lon.toFixed(5)}${time}`;
+    $('filterSection').style.display = 'block';
+};
+
+const loadCachedData = () => {
+    const cached = loadCache(STORAGE.restaurants);
+    const location = loadCache(STORAGE.location);
+    
+    if (cached && location) {
+        displayLocation(location.lat, location.lon, true);
+        allRestaurants = cached;
+        renderRestaurants(allRestaurants);
+    }
+};
+
+const showError = (message) => {
+    console.error('Error:', message);
+    $('loadingSpinner').style.display = 'none';
+    $('restaurantsList').innerHTML = `
+        <li class="restaurant-item" style="color:red;">
+            <strong>❌ Error:</strong> ${message}<br>
+            <small>Check the console for details (Press F12)</small>
+        </li>`;
+};
+
 const fetchFastFood = async (lat, lon) => {
     $('loadingSpinner').style.display = 'block';
     $('restaurantsList').innerHTML = '<li class="restaurant-item">🔍 Searching nearby fast food places...</li>';
     
     console.log(`Fetching fast food near: ${lat}, ${lon}`);
 
-    const radius = 10000; // 10km in meters
+    const radius = 10000; // 10km
     const query = `
 [out:json][timeout:25];
 (
@@ -15,7 +82,6 @@ const fetchFastFood = async (lat, lon) => {
 out center;
 `;
 
-    // Multiple public Overpass instances (in order of preference)
     const endpoints = [
         'https://overpass-api.de/api/interpreter',
         'https://overpass.private.coffee/api/interpreter',
@@ -27,8 +93,6 @@ out center;
 
     for (const endpoint of endpoints) {
         try {
-            console.log(`Trying endpoint: ${endpoint}`);
-            
             const response = await fetch(endpoint, {
                 method: 'POST',
                 body: `data=${encodeURIComponent(query)}`,
@@ -38,15 +102,11 @@ out center;
                 }
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             const data = await response.json();
 
             if (data.elements && data.elements.length > 0) {
-                console.log(`✅ Success with ${endpoint} - Found ${data.elements.length} places`);
-                
                 allRestaurants = data.elements.map((el, index) => {
                     const tags = el.tags || {};
                     const center = el.center || el;
@@ -58,8 +118,8 @@ out center;
                     
                     let address = [tags['addr:housenumber'], tags['addr:street']]
                         .filter(Boolean).join(' ').trim();
-                    if (!address) address = tags['addr:full'] || 'See map for location';
-                    
+                    if (!address) address = 'See map for location';
+
                     return {
                         name: name,
                         cuisine: cuisine,
@@ -78,7 +138,6 @@ out center;
 
                 allRestaurants.sort((a, b) => a.distance - b.distance);
 
-                // Save cache
                 saveCache(STORAGE.restaurants, allRestaurants);
                 saveCache(STORAGE.location, { lat: userLat, lon: userLon });
                 saveCache(STORAGE.timestamp, new Date().toISOString());
@@ -89,18 +148,104 @@ out center;
                 break;
             }
         } catch (err) {
-            console.warn(`Endpoint ${endpoint} failed:`, err.message);
+            console.warn(`Endpoint failed:`, err.message);
         }
     }
 
     if (!success) {
-        console.error('All Overpass endpoints failed');
-        showError('Could not fetch real locations right now.<br>Overpass servers are busy/unavailable.<br><small>Try again in a few minutes or use cached data.</small>');
-        
-        // Optional: fallback to mock data if no cache
-        if (allRestaurants.length === 0) {
-            console.log('Falling back to mock data...');
-            // You can keep a small mock array here as temporary fallback if you want
-        }
+        showError('Could not fetch locations right now.<br>Try again in a few minutes.');
     }
 };
+
+const renderRestaurants = restaurants => {
+    const maxDist = parseFloat($('distanceFilter').value) || 3;
+    const filtered = restaurants.filter(r => r.distance <= maxDist);
+    const list = $('restaurantsList');
+    
+    if (filtered.length === 0) {
+        list.innerHTML = '<li class="restaurant-item">No restaurants found within this distance.</li>';
+        return;
+    }
+
+    list.innerHTML = filtered.map(place => `
+        <li class="restaurant-item" data-restaurant-id="${place.id}">
+            <div class="restaurant-header">
+                <strong>${place.name}</strong>
+                <span class="distance-badge">${place.distance.toFixed(2)} km</span>
+            </div>
+            <small class="cuisine">${place.cuisine}</small><br>
+            ${place.address ? `<small class="address">📍 ${place.address}</small><br>` : ''}
+        </li>`).join('');
+
+    // Add click listeners
+    document.querySelectorAll('.restaurant-item').forEach(li => {
+        li.addEventListener('click', () => {
+            const restaurant = restaurants.find(r => r.id == li.dataset.restaurantId);
+            if (restaurant) displayPlaceDetails(restaurant);
+        });
+    });
+};
+
+const displayPlaceDetails = place => {
+    $('detailName').textContent = place.name;
+    $('detailCuisine').textContent = place.cuisine || 'N/A';
+    $('detailAddress').textContent = place.address || 'N/A';
+    $('detailDistance').textContent = `${place.distance.toFixed(2)} km away`;
+    $('detailCoords').textContent = `${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}`;
+    
+    $('detailLinks').innerHTML = `
+        <a href="https://www.openstreetmap.org/?mlat=${place.lat}&mlon=${place.lon}&zoom=17" target="_blank" class="link-btn">📍 OpenStreetMap</a>
+        <a href="https://www.google.com/maps/search/${encodeURIComponent(place.name)}/@${place.lat},${place.lon},15z" target="_blank" class="link-btn">🗺️ Google Maps</a>
+        ${place.website ? `<a href="${place.website.startsWith('http') ? place.website : 'https://' + place.website}" target="_blank" class="link-btn">🌐 Website</a>` : ''}`;
+    
+    $('detailExtra').innerHTML = place.phone 
+        ? `<div>📞 ${place.phone}</div>${place.hours ? `<div>⏰ ${place.hours}</div>` : ''}`
+        : 'No additional info available';
+    
+    $('selectedPlaceDetails').style.display = 'block';
+};
+
+const clearSelection = () => {
+    $('selectedPlaceDetails').style.display = 'none';
+};
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+    loadCachedData();
+    
+    $('getLocationBtn').addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            displayLocation(-25.06, 27.11);
+            fetchFastFood(-25.06, 27.11);
+            return;
+        }
+
+        $('loadingSpinner').style.display = 'block';
+
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                displayLocation(pos.coords.latitude, pos.coords.longitude);
+                fetchFastFood(pos.coords.latitude, pos.coords.longitude);
+            },
+            err => {
+                console.warn('Geolocation failed:', err);
+                displayLocation(-25.06, 27.11);
+                fetchFastFood(-25.06, 27.11);
+            },
+            { timeout: 10000, enableHighAccuracy: true }
+        );
+    });
+
+    const distFilter = $('distanceFilter');
+    if (distFilter) {
+        distFilter.addEventListener('input', e => {
+            $('distanceValue').textContent = e.target.value + ' km';
+            renderRestaurants(allRestaurants);
+        });
+    }
+
+    const clearBtn = $('clearButton');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearSelection);
+    }
+});
