@@ -1,0 +1,54 @@
+
+graph TD
+    User["👤 User<br/>Clicks Button"]
+    
+    UI["💻 User Interface<br/>HTML Structure<br/>Event Handlers<br/>DOM Updates"]
+    
+    Geoloc["📍 Geolocation API<br/>Browser Native API<br/>Returns lat/lon<br/>Coordinates"]
+    
+    DataProc["⚙️ Data Processor<br/>Filter Results<br/>Format for UI<br/>Error Handling"]
+    
+    OverpassAPI["🗺️ Overpass API<br/>OpenStreetMap<br/>Query Restaurants<br/>JSON Response"]
+    
+    MapDisplay["🗺️ Map Display<br/>Leaflet.js Optional<br/>Render Markers<br/>Show Location"]
+    
+    Results["🍔 Results Display<br/>Restaurant Cards<br/>Distance & Ratings<br/>Open Status"]
+    
+    %% User interactions
+    User -->|"1. Click 'Find Food Near Me'"| UI
+    
+    %% UI to Geolocation
+    UI -->|"2. Call getCurrentPosition()"| Geoloc
+    
+    %% Geolocation to Data Processor
+    Geoloc -->|"3. Return lat/lon"| DataProc
+    
+    %% Data Processor to Overpass API
+    DataProc -->|"4. Build & Send Query<br/>with coordinates"| OverpassAPI
+    
+    %% Overpass API back to Data Processor
+    OverpassAPI -->|"5. Return JSON<br/>Restaurant Array"| DataProc
+    
+    %% Data Processor back to UI
+    DataProc -->|"6. Formatted<br/>Restaurant Data"| UI
+    
+    %% UI to Results Display
+    UI -->|"7. Create HTML Cards"| Results
+    
+    %% UI to Map (Optional)
+    UI -->|"8. Render Map<br/>with Markers"| MapDisplay
+    
+    %% Styling
+    classDef userClass fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    classDef apiClass fill:#FF6B35,stroke:#CC4422,stroke-width:2px,color:#fff
+    classDef processorClass fill:#9B59B6,stroke:#6C3A7C,stroke-width:2px,color:#fff
+    classDef displayClass fill:#27AE60,stroke:#1E7E48,stroke-width:2px,color:#fff
+    classDef dataClass fill:#F39C12,stroke:#C87E0A,stroke-width:2px,color:#fff
+    
+    class User userClass
+    class UI userClass
+    class Geoloc dataClass
+    class DataProc processorClass
+    class OverpassAPI apiClass
+    class MapDisplay displayClass
+    class Results displayClass

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fast Food Finder - Diagnostics & Tests</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .test-section {
+            background: #2d2d2d;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
+
+        .test-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px 5px 5px 0;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .output {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .success {
+            color: #4caf50;
+        }
+
+        .error {
+            color: #ff6b6b;
+        }
+
+        .warning {
+            color: #ffc107;
+        }
+
+        .info {
+            color: #2196f3;
+        }
+
+        .log-line {
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .log-line:last-child {
+            border-bottom: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 4px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin: 2px;
+        }
+
+        .badge-pass {
+            background: #4caf50;
+            color: white;
+        }
+
+        .badge-fail {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .coordinates {
+            background: #0a3a0a;
+            border-left: 3px solid #4caf50;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .stat-box {
+            background: #333;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+
+        .stat-label {
+            color: #999;
+            font-size: 0.85em;
+        }
+
+        .stat-value {
+            color: #4caf50;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            margin-top: 30px;
+            border-top: 1px solid #444;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 Fast Food Finder - Diagnostics</h1>
+            <p>Test your browser, location services, and API connectivity</p>
+        </header>
+
+        <!-- Test 1: Browser Support -->
+        <div class="test-section">
+            <h2>🌐 Test 1: Browser Geolocation Support</h2>
+            <p>Check if your browser supports geolocation API</p>
+            <button onclick="testBrowserSupport()">Run Test</button>
+            <div id="test1-output" class="output" style="display: none;"></div>
+        </div>
+
+        <!-- Test 2: Get Location -->
+        <div class="test-section">
+            <h2>📍 Test 2: Get Current Location</h2>
+            <p>Attempt to get your precise coordinates</p>
+            <button onclick="testGetLocation()">Run Test</button>
+            <div id="test2-output" class="output" style="display: none;"></div>
+        </div>
+
+        <!-- Test 3: Overpass API -->
+        <div class="test-section">
+            <h2>🌍 Test 3: Overpass API Connectivity</h2>
+            <p>Test connection to OpenStreetMap Overpass API</p>
+            <button onclick="testOverpassAPI()">Run Test</button>
+            <div id="test3-output" class="output" style="display: none;"></div>
+        </div>
+
+        <!-- Test 4: Full Data Fetch -->
+        <div class="test-section">
+            <h2>🍔 Test 4: Full Data Fetch (With Your Location)</h2>
+            <p>Get your location and fetch fast food data</p>
+            <button onclick="testFullFetch()">Run Test</button>
+            <div id="test4-output" class="output" style="display: none;"></div>
+        </div>
+
+        <!-- Test 5: API Response Format -->
+        <div class="test-section">
+            <h2>📊 Test 5: Test API Response Parsing</h2>
+            <p>Test parsing of Overpass API response data</p>
+            <button onclick="testResponseParsing()">Run Test</button>
+            <div id="test5-output" class="output" style="display: none;"></div>
+        </div>
+
+        <!-- Test 6: Browser Permissions -->
+        <div class="test-section">
+            <h2>🔐 Test 6: Check Location Permissions</h2>
+            <p>Check your browser's location permission status</p>
+            <button onclick="testPermissions()">Run Test</button>
+            <div id="test6-output" class="output" style="display: none;"></div>
+        </div>
+
+        <!-- Test 7: Network Connectivity -->
+        <div class="test-section">
+            <h2>🌐 Test 7: Network Connectivity</h2>
+            <p>Test if you can reach external APIs</p>
+            <button onclick="testNetworkConnectivity()">Run Test</button>
+            <div id="test7-output" class="output" style="display: none;"></div>
+        </div>
+
+        <!-- Test 8: Full Diagnostic Report -->
+        <div class="test-section">
+            <h2>📋 Test 8: Full Diagnostic Report</h2>
+            <p>Run all tests and generate a comprehensive report</p>
+            <button onclick="runFullDiagnostics()">Generate Full Report</button>
+            <div id="test8-output" class="output" style="display: none;"></div>
+        </div>
+
+        <footer>
+            <p>💡 Tip: Open Developer Console (F12) to see detailed logs</p>
+        </footer>
+    </div>
+
+    <script>
+        // Helper function to log output
+        function logOutput(elementId, message, type = 'info') {
+            const output = document.getElementById(elementId);
+            output.style.display = 'block';
+            
+            const line = document.createElement('div');
+            line.className = `log-line ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            line.innerHTML = `<span style="color: #666;">[${timestamp}]</span> ${message}`;
+            
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+            
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearOutput(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        // Test 1: Browser Support
+        function testBrowserSupport() {
+            clearOutput('test1-output');
+            logOutput('test1-output', 'Starting browser support test...', 'info');
+            
+            if ('geolocation' in navigator) {
+                logOutput('test1-output', '✓ Geolocation API is supported', 'success');
+                logOutput('test1-output', `Browser: ${navigator.userAgent.substring(0, 100)}...`, 'info');
+            } else {
+                logOutput('test1-output', '✗ Geolocation API is NOT supported', 'error');
+                logOutput('test1-output', 'Your browser does not support the Geolocation API', 'error');
+                logOutput('test1-output', 'Try updating your browser or using a different one', 'warning');
+            }
+        }
+
+        // Test 2: Get Location
+        function testGetLocation() {
+            clearOutput('test2-output');
+            logOutput('test2-output', 'Requesting location access...', 'info');
+            logOutput('test2-output', 'Your browser may prompt you for permission', 'warning');
+            
+            if (!navigator.geolocation) {
+                logOutput('test2-output', '✗ Geolocation not supported', 'error');
+                return;
+            }
+
+            const timeoutId = setTimeout(() => {
+                logOutput('test2-output', '⏱️ Location request timed out after 10 seconds', 'error');
+                logOutput('test2-output', 'Possible causes:', 'info');
+                logOutput('test2-output', '  • GPS/Location services disabled on device', 'info');
+                logOutput('test2-output', '  • Slow network connection', 'info');
+                logOutput('test2-output', '  • Browser in private/incognito mode', 'warning');
+            }, 10000);
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    clearTimeout(timeoutId);
+                    const { latitude, longitude, accuracy } = position.coords;
+                    
+                    logOutput('test2-output', '✓ Location obtained successfully!', 'success');
+                    logOutput('test2-output', `Latitude: ${latitude}`, 'info');
+                    logOutput('test2-output', `Longitude: ${longitude}`, 'info');
+                    logOutput('test2-output', `Accuracy: ±${accuracy.toFixed(2)} meters`, 'info');
+                    logOutput('test2-output', `Timestamp: ${new Date(position.timestamp).toLocaleString()}`, 'info');
+                },
+                (error) => {
+                    clearTimeout(timeoutId);
+                    logOutput('test2-output', '✗ Location request failed', 'error');
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            logOutput('test2-output', 'Error: Permission denied', 'error');
+                            logOutput('test2-output', 'You denied location access. Check your browser settings:', 'warning');
+                            logOutput('test2-output', '  • Chrome: Settings → Privacy → Site Settings → Location', 'info');
+                            logOutput('test2-output', '  • Firefox: Preferences → Privacy → Permissions → Location', 'info');
+                            logOutput('test2-output', '  • Safari: Preferences → Privacy → Location Services', 'info');
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            logOutput('test2-output', 'Error: Position unavailable', 'error');
+                            logOutput('test2-output', 'Your device cannot determine your location', 'warning');
+                            logOutput('test2-output', 'Possible causes:', 'info');
+                            logOutput('test2-output', '  • GPS disabled on device', 'info');
+                            logOutput('test2-output', '  • Not enough satellites visible', 'info');
+                            logOutput('test2-output', '  • Blocked by building/obstruction', 'info');
+                            break;
+                        case error.TIMEOUT:
+                            logOutput('test2-output', 'Error: Location request timed out', 'error');
+                            logOutput('test2-output', 'Check your internet connection and try again', 'warning');
+                            break;
+                        default:
+                            logOutput('test2-output', `Error: ${error.message}`, 'error');
+                    }
+                }
+            );
+        }
+
+        // Test 3: Overpass API
+        function testOverpassAPI() {
+            clearOutput('test3-output');
+            logOutput('test3-output', 'Testing Overpass API connectivity...', 'info');
+            logOutput('test3-output', 'Endpoint: https://overpass-api.de/api/interpreter', 'info');
+            
+            const startTime = Date.now();
+            const testQuery = `[out:json][timeout:5];node[amenity=cafe](around:1000,-25.06,27.11);out center;`;
+
+            fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'data=' + encodeURIComponent(testQuery)
+            })
+            .then(response => {
+                const duration = Date.now() - startTime;
+                logOutput('test3-output', `✓ API responded in ${duration}ms`, 'success');
+                logOutput('test3-output', `Status: ${response.status} ${response.statusText}`, 'info');
+                
+                if (!response.ok) {
+                    logOutput('test3-output', '⚠️ API returned error status', 'warning');
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                logOutput('test3-output', '✓ API response parsed successfully', 'success');
+                logOutput('test3-output', `Elements received: ${data.elements?.length || 0}`, 'info');
+                logOutput('test3-output', `Response size: ${JSON.stringify(data).length} bytes`, 'info');
+            })
+            .catch(error => {
+                logOutput('test3-output', '✗ API test failed', 'error');
+                logOutput('test3-output', `Error: ${error.message}`, 'error');
+                logOutput('test3-output', 'Possible causes:', 'info');
+                logOutput('test3-output', '  • Network connection issue', 'info');
+                logOutput('test3-output', '  • Overpass API is temporarily down', 'info');
+                logOutput('test3-output', '  • Firewall/proxy blocking the request', 'warning');
+            });
+        }
+
+        // Test 4: Full Fetch
+        function testFullFetch() {
+            clearOutput('test4-output');
+            logOutput('test4-output', 'Starting full data fetch test...', 'info');
+            
+            if (!navigator.geolocation) {
+                logOutput('test4-output', '✗ Geolocation not supported', 'error');
+                return;
+            }
+
+            logOutput('test4-output', 'Step 1: Getting your location...', 'info');
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    logOutput('test4-output', `✓ Location obtained: ${lat.toFixed(5)}, ${lon.toFixed(5)}`, 'success');
+                    logOutput('test4-output', 'Step 2: Fetching fast food restaurants...', 'info');
+                    
+                    const radius = 5000;
+                    const query = `
+                        [out:json][timeout:25];
+                        (
+                            node[amenity=fast_food](around:${radius},${lat},${lon});
+                            way[amenity=fast_food](around:${radius},${lat},${lon});
+                            relation[amenity=fast_food](around:${radius},${lat},${lon});
+                        );
+                        out center;
+                    `;
+
+                    const startTime = Date.now();
+                    fetch('https://overpass-api.de/api/interpreter', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'data=' + encodeURIComponent(query)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const duration = Date.now() - startTime;
+                        logOutput('test4-output', `✓ Data received in ${duration}ms`, 'success');
+                        logOutput('test4-output', `✓ Total restaurants found: ${data.elements?.length || 0}`, 'success');
+                        
+                        if (data.elements && data.elements.length > 0) {
+                            logOutput('test4-output', 'Sample restaurant:', 'info');
+                            const sample = data.elements[0];
+                            logOutput('test4-output', `  Name: ${sample.tags?.name || 'N/A'}`, 'info');
+                            logOutput('test4-output', `  Type: ${sample.type}`, 'info');
+                        }
+                    })
+                    .catch(error => {
+                        logOutput('test4-output', '✗ API request failed', 'error');
+                        logOutput('test4-output', `Error: ${error.message}`, 'error');
+                    });
+                },
+                (error) => {
+                    logOutput('test4-output', '✗ Failed to get location', 'error');
+                    logOutput('test4-output', `Error: ${error.message}`, 'error');
+                }
+            );
+        }
+
+        // Test 5: Response Parsing
+        function testResponseParsing() {
+            clearOutput('test5-output');
+            logOutput('test5-output', 'Testing API response parsing...', 'info');
+            
+            const mockResponse = {
+                "version": 0.6,
+                "generator": "Overpass API",
+                "elements": [
+                    {
+                        "type": "node",
+                        "id": 123456,
+                        "lat": -25.0606,
+                        "lon": 27.1101,
+                        "tags": {
+                            "name": "Test Fast Food",
+                            "cuisine": "burger;sandwich",
+                            "amenity": "fast_food"
+                        }
+                    }
+                ]
+            };
+
+            try {
+                logOutput('test5-output', '✓ Mock response created', 'success');
+                logOutput('test5-output', `Elements count: ${mockResponse.elements.length}`, 'info');
+                
+                const restaurant = mockResponse.elements[0];
+                const name = restaurant.tags?.name || 'Unnamed';
+                const cuisine = restaurant.tags?.cuisine || 'Fast Food';
+                
+                logOutput('test5-output', `✓ Data extraction successful`, 'success');
+                logOutput('test5-output', `Restaurant: ${name} (${cuisine})`, 'info');
+                logOutput('test5-output', `Coordinates: ${restaurant.lat}, ${restaurant.lon}`, 'info');
+            } catch (error) {
+                logOutput('test5-output', '✗ Parsing failed', 'error');
+                logOutput('test5-output', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 6: Permissions
+        function testPermissions() {
+            clearOutput('test6-output');
+            logOutput('test6-output', 'Checking location permissions...', 'info');
+            
+            if ('permissions' in navigator) {
+                navigator.permissions.query({ name: 'geolocation' })
+                    .then(permission => {
+                        logOutput('test6-output', `Permission state: ${permission.state}`, 'info');
+                        
+                        switch(permission.state) {
+                            case 'granted':
+                                logOutput('test6-output', '✓ Location access is GRANTED', 'success');
+                                break;
+                            case 'prompt':
+                                logOutput('test6-output', '⚠️ Location access will PROMPT when requested', 'warning');
+                                break;
+                            case 'denied':
+                                logOutput('test6-output', '✗ Location access is DENIED', 'error');
+                                logOutput('test6-output', 'You need to allow location access in browser settings', 'warning');
+                                break;
+                        }
+                        
+                        permission.addEventListener('change', () => {
+                            logOutput('test6-output', `Permission changed to: ${permission.state}`, 'info');
+                        });
+                    })
+                    .catch(error => {
+                        logOutput('test6-output', '⚠️ Could not query permissions', 'warning');
+                        logOutput('test6-output', 'This is normal in some browsers', 'info');
+                    });
+            } else {
+                logOutput('test6-output', '⚠️ Permissions API not supported', 'warning');
+                logOutput('test6-output', 'Your browser may not support the Permissions API', 'info');
+            }
+        }
+
+        // Test 7: Network Connectivity
+        function testNetworkConnectivity() {
+            clearOutput('test7-output');
+            logOutput('test7-output', 'Testing network connectivity...', 'info');
+            
+            const endpoints = [
+                { name: 'Overpass API', url: 'https://overpass-api.de/api/interpreter' },
+                { name: 'Google Maps', url: 'https://www.google.com/maps' },
+                { name: 'OpenStreetMap', url: 'https://www.openstreetmap.org' }
+            ];
+
+            let completed = 0;
+            endpoints.forEach(endpoint => {
+                fetch(endpoint.url, { method: 'HEAD' })
+                    .then(() => {
+                        logOutput('test7-output', `✓ ${endpoint.name}: Reachable`, 'success');
+                        completed++;
+                    })
+                    .catch(() => {
+                        logOutput('test7-output', `✗ ${endpoint.name}: Not reachable`, 'error');
+                        completed++;
+                    });
+            });
+        }
+
+        // Full Diagnostics
+        async function runFullDiagnostics() {
+            clearOutput('test8-output');
+            logOutput('test8-output', '═══════════════════════════════════════', 'info');
+            logOutput('test8-output', '🔧 FULL DIAGNOSTIC REPORT', 'info');
+            logOutput('test8-output', '═══════════════════════════════════════', 'info');
+            
+            // Browser Info
+            logOutput('test8-output', '', 'info');
+            logOutput('test8-output', '📋 BROWSER INFORMATION', 'info');
+            logOutput('test8-output', `User Agent: ${navigator.userAgent}`, 'info');
+            logOutput('test8-output', `Language: ${navigator.language}`, 'info');
+            logOutput('test8-output', `Online: ${navigator.onLine ? 'Yes' : 'No'}`, navigator.onLine ? 'success' : 'error');
+            
+            // Features
+            logOutput('test8-output', '', 'info');
+            logOutput('test8-output', '🎯 FEATURE SUPPORT', 'info');
+            logOutput('test8-output', `Geolocation: ${'geolocation' in navigator ? '✓' : '✗'}`, 'geolocation' in navigator ? 'success' : 'error');
+            logOutput('test8-output', `Fetch API: ${'fetch' in window ? '✓' : '✗'}`, 'fetch' in window ? 'success' : 'error');
+            logOutput('test8-output', `Local Storage: ${'localStorage' in window ? '✓' : '✗'}`, 'localStorage' in window ? 'success' : 'error');
+            logOutput('test8-output', `Service Worker: ${'serviceWorker' in navigator ? '✓' : '✗'}`, 'serviceWorker' in navigator ? 'success' : 'error');
+            
+            logOutput('test8-output', '', 'info');
+            logOutput('test8-output', '═══════════════════════════════════════', 'info');
+            logOutput('test8-output', '✓ Diagnostic report generated', 'success');
+        }
+    </script>
+</body>
+</html>

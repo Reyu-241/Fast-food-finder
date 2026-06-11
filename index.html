@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fast Food Finder</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍔 Fast Food Finder</h1>
+            <p>Find fast food restaurants near your location using OpenStreetMap</p>
+        </header>
+
+        <main>
+            <section class="controls">
+                <button id="getLocationBtn" class="btn btn-primary">
+                    📍 Find Food Near Me
+                </button>
+                
+                <div id="currentLocation" class="location-info">
+                    <p id="coordsDisplay">Click button to get your location...</p>
+                </div>
+
+                <div id="filterSection" class="filter-section" style="display: none; margin-top: 15px;">
+                    <label for="distanceFilter">Max Distance (km):</label>
+                    <input type="range" id="distanceFilter" min="0.5" max="10" step="0.5" value="3">
+                    <span id="distanceValue">3 km</span>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section">
+                <h2>🍽️ Fast Food Places Near You</h2>
+                <p class="drag-hint">💡 Drag items below to see more details</p>
+                
+                <div id="loadingSpinner" class="loading" style="display: none;">
+                    <p>🔍 Searching for fast food nearby...</p>
+                </div>
+                
+                <ul id="restaurantsList" class="restaurants-list">
+                    <li class="placeholder">No restaurants found yet. Click the button above.</li>
+                </ul>
+            </section>
+
+            <!-- Drag & Drop Box -->
+            <section class="details-section">
+                <h2>📌 Selected Place Details</h2>
+                <div id="dropZone" class="drop-zone">
+                    <p class="drop-placeholder">👈 Drag a restaurant here to see details</p>
+                </div>
+                
+                <div id="selectedPlaceDetails" class="selected-place-details" style="display: none;">
+                    <div class="detail-header">
+                        <h3 id="detailName"></h3>
+                        <button id="clearButton" class="btn-clear">✕</button>
+                    </div>
+                    
+                    <div class="detail-content">
+                        <div class="detail-item">
+                            <span class="detail-label">🍽️ Cuisine Type:</span>
+                            <span id="detailCuisine"></span>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <span class="detail-label">📍 Address:</span>
+                            <span id="detailAddress"></span>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <span class="detail-label">📏 Distance:</span>
+                            <span id="detailDistance"></span>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <span class="detail-label">📊 Coordinates:</span>
+                            <span id="detailCoords"></span>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <span class="detail-label">🔗 Links:</span>
+                            <div id="detailLinks"></div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <span class="detail-label">ℹ️ Additional Info:</span>
+                            <span id="detailExtra"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Data powered by OpenStreetMap • Overpass API</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
