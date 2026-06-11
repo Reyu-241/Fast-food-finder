@@ -1,0 +1,58 @@
+Story:
+As a hungry user,
+I want to find fast food places near my current location,
+So that I can quickly discover options without manual searching.
+
+Acceptance Criteria:
+- App can access device geolocation with user permission
+- Shows "Find Food Near Me" button as primary action
+- Falls back gracefully to a default location (e.g. Johannesburg) if geolocation fails
+- Displays current coordinates with "(Cached)" when using saved location
+
+Story:
+As a user,
+I want to see fast food restaurants on an interactive map,
+So that I can visually understand their locations relative to me.
+
+Acceptance Criteria:
+- Leaflet map is displayed with OpenStreetMap tiles
+- User location is marked with a distinct pin
+- All nearby fast food places are shown as clickable markers
+- Clicking a marker shows basic info popup and opens details panel
+- Map centers and zooms to user location after fetching results
+
+Story:
+As a user,
+I want to see a sorted list of nearby fast food places,
+So that I can easily browse and compare options.
+
+Acceptance Criteria:
+- Restaurants are sorted by distance (closest first)
+- Distance filter slider (0.5 km – 15 km) works in real-time
+- List shows name, cuisine, address, and distance
+- Clicking a list item highlights it on the map and opens details
+- Clear message shown when no results are found in selected range
+
+Story:
+As a user,
+I want to view detailed information about a selected restaurant,
+So that I can decide whether to visit it.
+
+Acceptance Criteria:
+- Details panel shows: Name, Cuisine, Address, Distance, Links
+- Includes OSM and Google Maps links
+- Shows website and phone number when available
+- Panel can be closed with clear button
+- Smooth interaction between map, list, and details panel
+
+Story:
+As a user,
+I want reliable access to fast food location data,
+So that the app works consistently.
+
+Acceptance Criteria:
+- Uses Overpass API with multiple fallback endpoints
+- Query targets `amenity=fast_food` (nodes + ways)
+- Results are cached in localStorage
+- Loading spinner is shown during search
+- Clear error message if all endpoints fail
