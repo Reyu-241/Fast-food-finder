@@ -5,23 +5,16 @@ const STORAGE = {
 };
 
 let userLat, userLon, allRestaurants = [];
+let map, userMarker, restaurantMarkers = [];
 
 const $ = id => document.getElementById(id);
 
 const saveCache = (key, data) => {
-    try {
-        localStorage.setItem(key, JSON.stringify(data));
-    } catch (e) {
-        console.warn('Cache save failed:', e);
-    }
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
 };
 
 const loadCache = key => {
-    try {
-        return JSON.parse(localStorage.getItem(key));
-    } catch (e) {
-        return null;
-    }
+    try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; }
 };
 
 const distance = (lat1, lon1, lat2, lon2) => {
@@ -38,10 +31,46 @@ const displayLocation = (lat, lon, isCached = false) => {
     userLat = lat;
     userLon = lon;
     const cached = isCached ? ' (Cached)' : '';
-    const time = isCached ? `<br><small style="color:#999;">Cached</small>` : '';
-    $('coordsDisplay').innerHTML = 
-        `📍 <strong>Your Location${cached}:</strong><br>Latitude: ${lat.toFixed(5)}, Longitude: ${lon.toFixed(5)}${time}`;
+    $('coordsDisplay').innerHTML = `📍 <strong>Your Location${cached}:</strong><br>Lat: ${lat.toFixed(5)}, Lon: ${lon.toFixed(5)}`;
     $('filterSection').style.display = 'block';
+};
+
+const initMap = () => {
+    map = L.map('map').setView([-25.06, 27.11], 13); // default view
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+    }).addTo(map);
+};
+
+const clearMarkers = () => {
+    restaurantMarkers.forEach(marker => map.removeLayer(marker));
+    restaurantMarkers = [];
+    if (userMarker) map.removeLayer(userMarker);
+};
+
+const addMarkers = (restaurants) => {
+    clearMarkers();
+
+    // User location marker
+    userMarker = L.marker([userLat, userLon], {
+        icon: L.divIcon({ className: 'user-location', html: '📍', iconSize: [30, 30] })
+    }).addTo(map).bindPopup("You are here");
+
+    // Restaurant markers
+    restaurants.forEach(place => {
+        const marker = L.marker([place.lat, place.lon])
+            .addTo(map)
+            .bindPopup(`
+                <strong>${place.name}</strong><br>
+                ${place.cuisine}<br>
+                ${place.distance.toFixed(2)} km
+            `);
+
+        marker.on('click', () => displayPlaceDetails(place));
+        restaurantMarkers.push(marker);
+    });
 };
 
 const loadCachedData = () => {
@@ -52,156 +81,135 @@ const loadCachedData = () => {
         displayLocation(location.lat, location.lon, true);
         allRestaurants = cached;
         renderRestaurants(allRestaurants);
+        if (map) addMarkers(allRestaurants);
     }
 };
 
 const showError = (message) => {
-    console.error('Error:', message);
     $('loadingSpinner').style.display = 'none';
-    $('restaurantsList').innerHTML = `
-        <li class="restaurant-item" style="color:red;">
-            <strong>❌ Error:</strong> ${message}<br>
-            <small>Check the console for details (Press F12)</small>
-        </li>`;
+    $('restaurantsList').innerHTML = `<li class="restaurant-item" style="color:red;">❌ ${message}</li>`;
 };
 
 const fetchFastFood = async (lat, lon) => {
     $('loadingSpinner').style.display = 'block';
-    $('restaurantsList').innerHTML = '<li class="restaurant-item">🔍 Searching nearby fast food places...</li>';
-    
-    console.log(`Fetching fast food near: ${lat}, ${lon}`);
+    $('restaurantsList').innerHTML = '<li class="restaurant-item">🔍 Searching nearby...</li>';
 
-    const radius = 10000; // 10km
+    const radius = 12000; // 12km
     const query = `
-[out:json][timeout:25];
+[out:json][timeout:30];
 (
   node["amenity"="fast_food"](around:${radius},${lat},${lon});
   way["amenity"="fast_food"](around:${radius},${lat},${lon});
-  relation["amenity"="fast_food"](around:${radius},${lat},${lon});
 );
 out center;
 `;
 
-    const endpoints = [
-        'https://overpass-api.de/api/interpreter',
-        'https://overpass.private.coffee/api/interpreter',
-        'https://overpass.kumi.systems/api/interpreter',
-        'https://lz4.overpass-api.de/api/interpreter'
-    ];
+    try {
+        const response = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            body: `data=${encodeURIComponent(query)}`,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
 
-    let success = false;
+        if (!response.ok) throw new Error('Overpass API error');
 
-    for (const endpoint of endpoints) {
-        try {
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                body: `data=${encodeURIComponent(query)}`,
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': 'FastFood-Locator-App'
-                }
-            });
+        const data = await response.json();
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            const data = await response.json();
-
-            if (data.elements && data.elements.length > 0) {
-                allRestaurants = data.elements.map((el, index) => {
-                    const tags = el.tags || {};
-                    const center = el.center || el;
-                    
-                    const name = tags.name || 'Unnamed Fast Food';
-                    const cuisine = tags.cuisine 
-                        ? tags.cuisine.split(';').map(c => c.trim()).join(', ') 
-                        : 'Fast Food';
-                    
-                    let address = [tags['addr:housenumber'], tags['addr:street']]
-                        .filter(Boolean).join(' ').trim();
-                    if (!address) address = 'See map for location';
-
-                    return {
-                        name: name,
-                        cuisine: cuisine,
-                        address: address,
-                        city: tags['addr:city'] || '',
-                        postcode: tags['addr:postcode'] || '',
-                        phone: tags.phone || tags['contact:phone'] || '',
-                        website: tags.website || tags['contact:website'] || '',
-                        hours: tags.opening_hours || '',
-                        lat: parseFloat(center.lat),
-                        lon: parseFloat(center.lon),
-                        distance: distance(lat, lon, parseFloat(center.lat), parseFloat(center.lon)),
-                        id: index + 1
-                    };
-                });
-
-                allRestaurants.sort((a, b) => a.distance - b.distance);
-
-                saveCache(STORAGE.restaurants, allRestaurants);
-                saveCache(STORAGE.location, { lat: userLat, lon: userLon });
-                saveCache(STORAGE.timestamp, new Date().toISOString());
-
-                $('loadingSpinner').style.display = 'none';
-                renderRestaurants(allRestaurants);
-                success = true;
-                break;
-            }
-        } catch (err) {
-            console.warn(`Endpoint failed:`, err.message);
+        if (!data.elements?.length) {
+            showError('No fast food places found nearby.');
+            allRestaurants = [];
+            return;
         }
-    }
 
-    if (!success) {
-        showError('Could not fetch locations right now.<br>Try again in a few minutes.');
+        allRestaurants = data.elements.map((el, index) => {
+            const tags = el.tags || {};
+            const center = el.center || el;
+            const name = tags.name || 'Fast Food Place';
+            const cuisine = tags.cuisine ? tags.cuisine.split(';').join(', ') : 'Fast Food';
+
+            let address = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean).join(' ');
+            if (!address) address = 'Address unavailable';
+
+            return {
+                name,
+                cuisine,
+                address,
+                phone: tags.phone || '',
+                website: tags.website || '',
+                hours: tags.opening_hours || '',
+                lat: parseFloat(center.lat),
+                lon: parseFloat(center.lon),
+                distance: distance(lat, lon, parseFloat(center.lat), parseFloat(center.lon)),
+                id: index + 1
+            };
+        });
+
+        allRestaurants.sort((a, b) => a.distance - b.distance);
+
+        saveCache(STORAGE.restaurants, allRestaurants);
+        saveCache(STORAGE.location, { lat, lon });
+        saveCache(STORAGE.timestamp, new Date().toISOString());
+
+        renderRestaurants(allRestaurants);
+        addMarkers(allRestaurants);
+
+    } catch (err) {
+        console.error(err);
+        showError('Failed to fetch data from Overpass API. Try again later.');
+    } finally {
+        $('loadingSpinner').style.display = 'none';
     }
 };
 
-const renderRestaurants = restaurants => {
-    const maxDist = parseFloat($('distanceFilter').value) || 3;
+const renderRestaurants = (restaurants) => {
+    const maxDist = parseFloat($('distanceFilter').value) || 5;
     const filtered = restaurants.filter(r => r.distance <= maxDist);
+
     const list = $('restaurantsList');
-    
     if (filtered.length === 0) {
-        list.innerHTML = '<li class="restaurant-item">No restaurants found within this distance.</li>';
+        list.innerHTML = '<li class="restaurant-item">No restaurants within selected distance.</li>';
         return;
     }
 
     list.innerHTML = filtered.map(place => `
-        <li class="restaurant-item" data-restaurant-id="${place.id}">
+        <li class="restaurant-item" data-id="${place.id}">
             <div class="restaurant-header">
                 <strong>${place.name}</strong>
                 <span class="distance-badge">${place.distance.toFixed(2)} km</span>
             </div>
-            <small class="cuisine">${place.cuisine}</small><br>
-            ${place.address ? `<small class="address">📍 ${place.address}</small><br>` : ''}
-        </li>`).join('');
+            <small>${place.cuisine}</small><br>
+            <small class="address">📍 ${place.address}</small>
+        </li>
+    `).join('');
 
-    // Add click listeners
+    // Click handlers
     document.querySelectorAll('.restaurant-item').forEach(li => {
         li.addEventListener('click', () => {
-            const restaurant = restaurants.find(r => r.id == li.dataset.restaurantId);
-            if (restaurant) displayPlaceDetails(restaurant);
+            const place = restaurants.find(r => r.id == li.dataset.id);
+            if (place) {
+                displayPlaceDetails(place);
+                map.flyTo([place.lat, place.lon], 16);
+            }
         });
     });
 };
 
-const displayPlaceDetails = place => {
+const displayPlaceDetails = (place) => {
     $('detailName').textContent = place.name;
-    $('detailCuisine').textContent = place.cuisine || 'N/A';
-    $('detailAddress').textContent = place.address || 'N/A';
+    $('detailCuisine').textContent = place.cuisine;
+    $('detailAddress').textContent = place.address;
     $('detailDistance').textContent = `${place.distance.toFixed(2)} km away`;
-    $('detailCoords').textContent = `${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}`;
     
     $('detailLinks').innerHTML = `
-        <a href="https://www.openstreetmap.org/?mlat=${place.lat}&mlon=${place.lon}&zoom=17" target="_blank" class="link-btn">📍 OpenStreetMap</a>
-        <a href="https://www.google.com/maps/search/${encodeURIComponent(place.name)}/@${place.lat},${place.lon},15z" target="_blank" class="link-btn">🗺️ Google Maps</a>
-        ${place.website ? `<a href="${place.website.startsWith('http') ? place.website : 'https://' + place.website}" target="_blank" class="link-btn">🌐 Website</a>` : ''}`;
-    
+        <a href="https://www.openstreetmap.org/?mlat=${place.lat}&mlon=${place.lon}" target="_blank" class="link-btn">🗺️ OSM</a>
+        <a href="https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lon}" target="_blank" class="link-btn">Google Maps</a>
+        ${place.website ? `<a href="${place.website}" target="_blank" class="link-btn">🌐 Website</a>` : ''}
+    `;
+
     $('detailExtra').innerHTML = place.phone 
-        ? `<div>📞 ${place.phone}</div>${place.hours ? `<div>⏰ ${place.hours}</div>` : ''}`
-        : 'No additional info available';
-    
+        ? `📞 ${place.phone}<br>${place.hours ? `⏰ ${place.hours}` : ''}`
+        : 'No extra info';
+
     $('selectedPlaceDetails').style.display = 'block';
 };
 
@@ -209,14 +217,14 @@ const clearSelection = () => {
     $('selectedPlaceDetails').style.display = 'none';
 };
 
-// Init
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    initMap();
     loadCachedData();
-    
+
     $('getLocationBtn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            displayLocation(-25.06, 27.11);
-            fetchFastFood(-25.06, 27.11);
+            alert("Geolocation not supported");
             return;
         }
 
@@ -224,28 +232,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         navigator.geolocation.getCurrentPosition(
             pos => {
-                displayLocation(pos.coords.latitude, pos.coords.longitude);
-                fetchFastFood(pos.coords.latitude, pos.coords.longitude);
+                const { latitude, longitude } = pos.coords;
+                displayLocation(latitude, longitude);
+                map.flyTo([latitude, longitude], 14);
+                fetchFastFood(latitude, longitude);
             },
             err => {
-                console.warn('Geolocation failed:', err);
+                console.warn(err);
+                alert("Could not get location. Using fallback (Johannesburg area).");
                 displayLocation(-25.06, 27.11);
+                map.flyTo([-25.06, 27.11], 14);
                 fetchFastFood(-25.06, 27.11);
             },
-            { timeout: 10000, enableHighAccuracy: true }
+            { enableHighAccuracy: true, timeout: 10000 }
         );
     });
 
-    const distFilter = $('distanceFilter');
-    if (distFilter) {
-        distFilter.addEventListener('input', e => {
-            $('distanceValue').textContent = e.target.value + ' km';
-            renderRestaurants(allRestaurants);
-        });
-    }
+    $('distanceFilter').addEventListener('input', () => {
+        $('distanceValue').textContent = $('distanceFilter').value + ' km';
+        renderRestaurants(allRestaurants);
+    });
 
-    const clearBtn = $('clearButton');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', clearSelection);
-    }
+    $('clearButton').addEventListener('click', clearSelection);
 });
