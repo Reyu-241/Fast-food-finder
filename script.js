@@ -67,159 +67,172 @@ const showError = (message) => {
 
 const fetchFastFood = (lat, lon) => {
     $('loadingSpinner').style.display = 'block';
+    $('restaurantsList').innerHTML = '<li class="restaurant-item">🔍 Loading mock data...</li>';
     
-    setTimeout(() => {
-        console.log('Using mock data for testing');
+    console.log(`Generating mock restaurants near: ${lat}, ${lon}`);
 
-        // Mock restaurants near the user
+    // Simulate API delay with timeout
+    setTimeout(() => {
+        console.log('Mock data generated');
+
+        // Create mock restaurants around user location
         allRestaurants = [
             {
-                name: 'KFC',
-                cuisine: 'Fast Food',
-                address: 'Main Street',
-                city: '',
-                postcode: '',
+                name: 'KFC - Main Street',
+                cuisine: 'Fried Chicken',
+                address: '123 Main Street, Johannesburg',
+                city: 'Johannesburg',
+                postcode: '2000',
                 phone: '011 123 4567',
                 website: 'www.kfc.co.za',
                 hours: '09:00-22:00',
-                lat: lat + 0.01,
-                lon: lon + 0.01,
-                distance: 1.2,
+                lat: lat + 0.005,
+                lon: lon + 0.005,
+                distance: distance(lat, lon, lat + 0.005, lon + 0.005),
                 id: 1
             },
             {
-                name: 'Burger King',
-                cuisine: 'Fast Food',
-                address: 'Park Avenue',
-                city: '',
-                postcode: '',
+                name: 'Burger King - Park Avenue',
+                cuisine: 'Burgers & Fast Food',
+                address: '456 Park Avenue, Johannesburg',
+                city: 'Johannesburg',
+                postcode: '2001',
                 phone: '011 987 6543',
                 website: 'www.burgerking.co.za',
                 hours: '09:00-23:00',
-                lat: lat - 0.01,
-                lon: lon - 0.01,
-                distance: 1.8,
+                lat: lat - 0.007,
+                lon: lon - 0.006,
+                distance: distance(lat, lon, lat - 0.007, lon - 0.006),
                 id: 2
             },
             {
-                name: 'Mcdonalds',
-                cuisine: 'Fast Food',
-                address: 'Shopping Mall',
-                city: '',
-                postcode: '',
+                name: 'McDonald\'s - Shopping Mall',
+                cuisine: 'Burgers, Fries & Shakes',
+                address: 'Shopping Centre, Main Road',
+                city: 'Johannesburg',
+                postcode: '2002',
                 phone: '011 456 7890',
                 website: 'www.mcdonalds.co.za',
                 hours: '08:00-23:30',
-                lat: lat + 0.02,
-                lon: lon,
-                distance: 2.3,
+                lat: lat + 0.008,
+                lon: lon + 0.002,
+                distance: distance(lat, lon, lat + 0.008, lon + 0.002),
                 id: 3
             },
             {
-                name: 'Nando\'s',
-                cuisine: 'Fast Food - Chicken',
-                address: 'Downtown',
-                city: '',
-                postcode: '',
+                name: 'Nando\'s - Downtown',
+                cuisine: 'Peri-Peri Chicken',
+                address: '789 Downtown Centre',
+                city: 'Johannesburg',
+                postcode: '2003',
                 phone: '011 234 5678',
                 website: 'www.nandos.co.za',
                 hours: '10:00-22:00',
-                lat: lat,
-                lon: lon + 0.02,
-                distance: 2.5,
+                lat: lat + 0.003,
+                lon: lon + 0.009,
+                distance: distance(lat, lon, lat + 0.003, lon + 0.009),
                 id: 4
             },
             {
-                name: 'Chicken Licken',
-                cuisine: 'Fast Food - Chicken',
-                address: 'Suburb Road',
-                city: '',
-                postcode: '',
+                name: 'Chicken Licken - Suburb Road',
+                cuisine: 'Fried Chicken & Chips',
+                address: '321 Suburb Road, Croydon',
+                city: 'Johannesburg',
+                postcode: '2198',
                 phone: '011 555 6666',
                 website: 'www.chickenlicken.co.za',
                 hours: '07:00-21:00',
-                lat: lat - 0.02,
-                lon: lon,
-                distance: 2.8,
+                lat: lat - 0.004,
+                lon: lon + 0.007,
+                distance: distance(lat, lon, lat - 0.004, lon + 0.007),
                 id: 5
+            },
+            {
+                name: 'Steers - City Centre',
+                cuisine: 'Burgers & Steak',
+                address: '555 City Centre Plaza',
+                city: 'Johannesburg',
+                postcode: '2004',
+                phone: '011 777 8888',
+                website: 'www.steers.co.za',
+                hours: '08:00-22:00',
+                lat: lat - 0.009,
+                lon: lon - 0.008,
+                distance: distance(lat, lon, lat - 0.009, lon - 0.008),
+                id: 6
+            },
+            {
+                name: 'Debonairs Pizza - Crescent',
+                cuisine: 'Pizza & Fast Food',
+                address: '999 Crescent Avenue',
+                city: 'Johannesburg',
+                postcode: '2199',
+                phone: '011 222 3333',
+                website: 'www.debonairs.co.za',
+                hours: '11:00-23:00',
+                lat: lat + 0.006,
+                lon: lon - 0.005,
+                distance: distance(lat, lon, lat + 0.006, lon - 0.005),
+                id: 7
+            },
+            {
+                name: 'Fishaways - River Walk',
+                cuisine: 'Fish & Chips',
+                address: '777 River Walk Mall',
+                city: 'Johannesburg',
+                postcode: '2195',
+                phone: '011 444 5555',
+                website: 'www.fishaways.co.za',
+                hours: '09:00-21:00',
+                lat: lat - 0.006,
+                lon: lon + 0.004,
+                distance: distance(lat, lon, lat - 0.006, lon + 0.004),
+                id: 8
+            },
+            {
+                name: 'Wimpy - Station Road',
+                cuisine: 'Burgers & Breakfast',
+                address: '111 Station Road',
+                city: 'Johannesburg',
+                postcode: '2000',
+                phone: '011 333 4444',
+                website: 'www.wimpy.co.za',
+                hours: '06:30-22:00',
+                lat: lat + 0.004,
+                lon: lon - 0.009,
+                distance: distance(lat, lon, lat + 0.004, lon - 0.009),
+                id: 9
+            },
+            {
+                name: 'Subway - Market Square',
+                cuisine: 'Sandwiches & Salads',
+                address: '666 Market Square',
+                city: 'Johannesburg',
+                postcode: '2001',
+                phone: '011 666 7777',
+                website: 'www.subway.co.za',
+                hours: '07:00-20:00',
+                lat: lat - 0.002,
+                lon: lon - 0.004,
+                distance: distance(lat, lon, lat - 0.002, lon - 0.004),
+                id: 10
             }
         ];
 
+        // Sort by distance
+        allRestaurants.sort((a, b) => a.distance - b.distance);
+
+        console.log('Generated:', allRestaurants.length, 'mock restaurants');
+
+        // Save to cache
         saveCache(STORAGE.restaurants, allRestaurants);
         saveCache(STORAGE.location, { lat: userLat, lon: userLon });
         saveCache(STORAGE.timestamp, new Date().toISOString());
 
         $('loadingSpinner').style.display = 'none';
         renderRestaurants(allRestaurants);
-    }, 500);
+    }, 1000); // 1 second delay to simulate API call
 };
-
-    // Using OpenTripMap API (supports CORS, free, no API key)
-    const searchUrl = `https://api.opentripmap.com/0.1/en/places/bbox?lon_min=${lon-0.05}&lon_max=${lon+0.05}&lat_min=${lat-0.05}&lat_max=${lat+0.05}&kinds=fast_food&limit=50`;
-
-    console.log('API URL:', searchUrl);
-
-    fetch(searchUrl)
-    .then(response => {
-        console.log('Response status:', response.status);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-    })
-    .then(data => {
-        console.log('Raw data received:', data);
-        console.log('Found:', data.features?.length || 0, 'results');
-        
-        if (!data.features || data.features.length === 0) {
-            showError('No fast food restaurants found in this area.');
-            return;
-        }
-
-        allRestaurants = data.features.map(feature => {
-            const props = feature.properties;
-            const coords = feature.geometry.coordinates;
-            const plat = coords[1];
-            const plon = coords[0];
-            
-            if (!plat || !plon) return null;
-
-            return {
-                name: props.name || 'Unnamed Fast Food',
-                cuisine: 'Fast Food',
-                address: props.address || 'Address not available',
-                city: '',
-                postcode: '',
-                phone: props.phone || '',
-                website: props.website || '',
-                hours: '',
-                lat: plat,
-                lon: plon,
-                distance: distance(userLat, userLon, plat, plon),
-                id: props.xid || Math.random()
-            };
-        })
-        .filter(r => r !== null)
-        .filter(r => r.distance <= 5)
-        .sort((a, b) => a.distance - b.distance);
-
-        console.log('Processed restaurants:', allRestaurants.length);
-
-        if (allRestaurants.length === 0) {
-            showError('No restaurants within 5km. Try increasing the distance filter.');
-            return;
-        }
-
-        saveCache(STORAGE.restaurants, allRestaurants);
-        saveCache(STORAGE.location, { lat: userLat, lon: userLon });
-        saveCache(STORAGE.timestamp, new Date().toISOString());
-
-        $('loadingSpinner').style.display = 'none';
-        renderRestaurants(allRestaurants);
-    })
-    .catch(error => {
-        console.error('Fetch error:', error);
-        showError(`API Error: ${error.message}. Please try again in a moment.`);
-    });
-
 
 const renderRestaurants = restaurants => {
     const maxDist = parseFloat($('distanceFilter').value) || 3;
@@ -314,30 +327,29 @@ document.addEventListener('DOMContentLoaded', () => {
     
     $('getLocationBtn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError('Geolocation is not supported by your browser');
+            console.log('Geolocation not supported, using mock location');
+            // Use mock location in South Africa (Krugersdorp area)
+            displayLocation(-25.06, 27.11);
+            fetchFastFood(-25.06, 27.11);
             return;
         }
 
-        console.log('Getting user location...');
+        console.log('Requesting real location...');
         $('loadingSpinner').style.display = 'block';
 
         navigator.geolocation.getCurrentPosition(
             pos => {
-                console.log('Location obtained:', pos.coords.latitude, pos.coords.longitude);
+                console.log('Real location obtained:', pos.coords.latitude, pos.coords.longitude);
                 displayLocation(pos.coords.latitude, pos.coords.longitude);
                 fetchFastFood(pos.coords.latitude, pos.coords.longitude);
             },
             err => {
-                console.error('Geolocation error:', err);
-                $('loadingSpinner').style.display = 'none';
-                const errorMsg = err.code === 1 
-                    ? 'Location access denied. Allow location in browser settings.'
-                    : err.code === 2
-                    ? 'Location unavailable. Enable GPS or try WiFi.'
-                    : 'Location request timed out. Try again.';
-                showError(errorMsg);
+                console.warn('Real location failed, using mock location:', err);
+                // Fallback to mock location
+                displayLocation(-25.06, 27.11);
+                fetchFastFood(-25.06, 27.11);
             },
-            { timeout: 10000, enableHighAccuracy: true }
+            { timeout: 5000, enableHighAccuracy: true }
         );
     });
 
